@@ -12,14 +12,13 @@ public class Task {
         private String id;
         private String title;
         private String description;
-        private String owner;
+        private String taskListId;
 
-        @JsonFormat(shape = JsonFormat.Shape.STRING)
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
         private Date createdOn;
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         private Date dueDate;
         private String category;
-
         private String priority;
 
     public String getId() {
@@ -46,12 +45,12 @@ public class Task {
         this.description = description;
     }
 
-    public String getOwner() {
-        return owner;
+    public String getTaskListId() {
+        return taskListId;
     }
 
-    public void setOwner(String owner) {
-        this.owner = owner;
+    public void setTaskListId(String taskListId) {
+        this.taskListId = taskListId;
     }
 
     public Date getCreatedOn() {
@@ -86,11 +85,11 @@ public class Task {
         this.priority = priority;
     }
 
-    public Task(String id, String title, String description, String owner, Date createdOn, Date dueDate, String category, String priority) {
+    public Task(String id, String title, String description, String taskListId, Date createdOn, Date dueDate, String category, String priority) {
         this.id = id;
         this.title = title;
         this.description = description;
-        this.owner = owner;
+        this.taskListId = taskListId;
         this.createdOn = createdOn;
         this.dueDate = dueDate;
         this.category = category;
