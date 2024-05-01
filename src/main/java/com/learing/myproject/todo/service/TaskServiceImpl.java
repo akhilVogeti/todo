@@ -9,7 +9,6 @@ import com.learing.myproject.todo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class TaskServiceImpl implements TaskService{
 
@@ -26,7 +25,8 @@ public class TaskServiceImpl implements TaskService{
     public List<Task> findAllTasks(String username) {
         List<Task> allTasks = new ArrayList<>();
         List<String> allTaskIds = new ArrayList<>();
-        List<TaskList> allTaskLists = taskListRepository.findByOwner(username);
+        User user = findUserByUsername(username);
+        List<TaskList> allTaskLists = taskListRepository.findByUserId(user.getId());
         for(TaskList taskList : allTaskLists) {
             allTaskIds.addAll(taskList.getTaskIds());
         }
@@ -40,8 +40,8 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public Map<String, List<String>> getTasksByLists(String username) {
-        Optional<User> userOptional = userRepository.findByUsername(username);
-        User userEntity = userOptional.orElseThrow(() -> new RuntimeException("User not found"));
+
+        User userEntity = findUserByUsername(username);
 
         List<String> taskListIds = userEntity.getTaskListIds();
 
@@ -61,7 +61,8 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public List<Task> getTasksByListName(String username, String listName) {
-        TaskList taskList = taskListRepository.findByOwnerAndListName(username, listName);
+        User user = findUserByUsername(username);
+        TaskList taskList = taskListRepository.findByUserIdAndListName(user.getId(), listName);
         List<String> taskIds = taskList.getTaskIds();
         List<Task> tasksByListName = new ArrayList<>();
         for(String taskId: taskIds){
@@ -72,22 +73,33 @@ public class TaskServiceImpl implements TaskService{
     }
 
 
+
+
     @Override
-    public Task findById(String id) {
-        return taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found with id: " + id));
+    public Task createTask(String username, Task task, String listName) {
+        User user = findUserByUsername(username);
+        TaskList taskList = taskListRepository.findByUserIdAndListName(user.getId(), listName);
+        task.setTaskListId(taskList.getId());
+        Task newTask = taskRepository.save(task);
+        taskList.getTaskIds().add(newTask.getId());
+        taskList = taskListRepository.save(taskList);
+        return newTask;
     }
 
     @Override
-    public Task createTask(String username, Task task) {
-        
-        return null;
+    public TaskList createTaskList(String username, TaskList taskList) {
+        User user = findUserByUsername(username);
+        taskList.setUserId(user.getId());
+        user.getTaskListIds().add(taskList.getId());
+        user = userRepository.save(user);
+        TaskList newTaskList = taskListRepository.save(taskList);
+        return newTaskList;
     }
 
     @Override
     public Task updateTask(String id, Task task) {
-        Optional<Task> optionalTask = taskRepository.findById(id);
-        Task theTask = optionalTask.orElseThrow(() -> new RuntimeException("Task not found with id: " + id));
+        Task theTask = findById(id);
+        
         theTask.setTitle(task.getTitle());
         theTask.setDescription(task.getDescription());
         return taskRepository.save(task);
@@ -95,8 +107,20 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public void deleteTask(String id) {
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found with id: " + id));
+        Task task = findById(id);
         taskRepository.delete(task);
     }
+
+    @Override
+    public Task findById(String id) {
+        return taskRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found with id: " + id));
+    }
+
+    public User findUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username " + username));
+    }
+
+    public boolean userHasAccess ()
 }

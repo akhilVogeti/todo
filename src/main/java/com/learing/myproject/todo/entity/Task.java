@@ -14,7 +14,7 @@ public class Task {
         private String description;
         private String taskListId;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING)
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         private Date createdOn;
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         private Date dueDate;

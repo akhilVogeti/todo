@@ -10,7 +10,6 @@ import java.util.Optional;
 
 public interface TaskRepository extends MongoRepository<Task, String>{
 
-    @Query("{owner:'?0'}")
-    List<Task> findByOwner(String ownerName);
+
 
 }

@@ -9,8 +9,9 @@ import java.util.List;
 
 public interface TaskListRepository extends MongoRepository<TaskList, String> {
 
-    @Query("{owner:'?0'}")
-    List<TaskList> findByOwner(String ownerName);
+    @Query("{userId: ?0}")
+    List<TaskList> findByUserId(String userId);
 
-    TaskList findByOwnerAndListName(String owner, String listName);
+    @Query("{userId: ?0 , listName: ?1}")
+    TaskList findByUserIdAndListName(String userId, String listName);
 }

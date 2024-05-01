@@ -9,13 +9,13 @@ import java.util.List;
 public class TaskList {
     @Id
     private String id;
-    private String owner;
+    private String userId;
     private String listName;
     private List<String> taskIds;
 
-    public TaskList(String id, String owner, String listName, List<String> taskIds) {
+    public TaskList(String id, String userId, String listName, List<String> taskIds) {
         this.id = id;
-        this.owner = owner;
+        this.userId = userId;
         this.listName = listName;
         this.taskIds = taskIds;
     }
@@ -28,12 +28,12 @@ public class TaskList {
         this.id = id;
     }
 
-    public String getOwner() {
-        return owner;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setOwner(String owner) {
-        this.owner = owner;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getListName() {
@@ -51,4 +51,6 @@ public class TaskList {
     public void setTaskIds(List<String> taskIds) {
         this.taskIds = taskIds;
     }
+
+    public TaskList() {}
 }

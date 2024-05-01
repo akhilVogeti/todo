@@ -28,7 +28,13 @@ public class User {
         this.taskListIds = taskListIds;
     }
 
+    public String getId() {
+        return id;
+    }
 
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public  String getUsername() {
         return username;
