@@ -19,6 +19,8 @@ public class Task {
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         private Date dueDate;
         private String category;
+
+        private boolean completed;
         private String priority;
 
     public String getId() {
@@ -77,6 +79,14 @@ public class Task {
         this.category = category;
     }
 
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
+    }
+
     public String getPriority() {
         return priority;
     }
@@ -85,7 +95,7 @@ public class Task {
         this.priority = priority;
     }
 
-    public Task(String id, String title, String description, String taskListId, Date createdOn, Date dueDate, String category, String priority) {
+    public Task(String id, String title, String description, String taskListId, Date createdOn, Date dueDate, String category, boolean completed, String priority) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -93,6 +103,7 @@ public class Task {
         this.createdOn = createdOn;
         this.dueDate = dueDate;
         this.category = category;
+        this.completed = completed;
         this.priority = priority;
     }
 }

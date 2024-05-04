@@ -20,6 +20,7 @@ public class TaskController {
     @Autowired
     private TaskService taskService;
 
+
     @GetMapping("/")
     public List<Task> getAllTasks(Principal user) {
         return taskService.findAllTasks(user.getName());
@@ -33,9 +34,8 @@ public class TaskController {
 
 
     @GetMapping("/lists")
-    public ResponseEntity <Map<String, List<String>>> getAllTasksByLists(Principal user) {
-        Map<String, List<String>> tasksByLists = taskService.getTasksByLists(user.getName());
-        return ResponseEntity.ok(tasksByLists);
+    public  Map<String, List<String>> getAllTasksByLists(Principal user) {
+        return taskService.getTasksByLists(user.getName());
     }
 
     @PostMapping("/lists")
@@ -55,18 +55,28 @@ public class TaskController {
     }
 
     @GetMapping("/{id}")
-    public Task getTaskById(@PathVariable String id) {
-        return taskService.findById(id);
+    public Task getTaskById(Principal user, @PathVariable String id) {
+        return taskService.getTaskById(user.getName(), id);
     }
 
     @PutMapping("/{id}")
-    public Task updateTask(@PathVariable String id, @RequestBody Task taskDetails) {
-       return taskService.updateTask(id, taskDetails);
+    public Task updateTask(Principal user, @PathVariable String id, @RequestBody Task taskDetails) {
+       return taskService.updateTask(user.getName(), id, taskDetails);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteTask(@PathVariable String id) {
-        taskService.deleteTask(id);
+    public void deleteTask(Principal user, @PathVariable String id) {
+        taskService.deleteTask(user.getName(), id);
+    }
+
+    @GetMapping("?sortBy={sortField}&filterBy={filterField}")
+    public List<Task> sortAndFilter(Principal user, String sortField, String filterField) {
+        return taskService.sortAndFilter(user.getName(), sortField, filterField);
+    }
+
+    @GetMapping("/search?query={searchText}")
+    public List<Task> searchTasks(Principal user, String searchText) {
+        return taskService.searchTasks(user.getName(), searchText);
     }
 
 }

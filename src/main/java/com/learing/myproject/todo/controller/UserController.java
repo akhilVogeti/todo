@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
+
 @RestController
 @AllArgsConstructor
 public class UserController {
@@ -35,11 +37,13 @@ public class UserController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already taken. Please try again");
 
             user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setTaskListIds(new ArrayList<>());
             User savedUser = userRepository.save(user);
 
             TaskList defaultTaskList = new TaskList();
-            defaultTaskList.setUserId(savedUser.getUsername());
+            defaultTaskList.setUserId(savedUser.getId());
             defaultTaskList.setListName("inbox");
+            defaultTaskList.setTaskIds(new ArrayList<>());
             defaultTaskList = taskListRepository.save(defaultTaskList);
             savedUser.getTaskListIds().add(defaultTaskList.getId());
             savedUser = userRepository.save(savedUser);
