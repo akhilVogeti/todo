@@ -11,7 +11,7 @@ import java.util.Map;
 public interface TaskService {
     List<Task> findAllTasks(String username);
 
-    Map<String, List<String>> getTasksByLists(String username);
+    Map<String, List<Task>> getTasksByLists(String username);
 
     List<Task> getTasksByListName(String username, String ListName);
     Task getTaskById(String username, String id);
@@ -23,7 +23,7 @@ public interface TaskService {
 
     void deleteTask(String username, String id);
 
-    List<Task> sortAndFilter(String username, String sortField, String filterField);
+    List<Task> sortAndFilter( String username, String sortBy, String filterField, String filterValue);
 
     List<Task> searchTasks(String username, String searchText);
 }

@@ -40,15 +40,18 @@ public class UserController {
             user.setTaskListIds(new ArrayList<>());
             User savedUser = userRepository.save(user);
 
+
             TaskList defaultTaskList = new TaskList();
             defaultTaskList.setUserId(savedUser.getId());
             defaultTaskList.setListName("inbox");
             defaultTaskList.setTaskIds(new ArrayList<>());
             defaultTaskList = taskListRepository.save(defaultTaskList);
+
             savedUser.getTaskListIds().add(defaultTaskList.getId());
             savedUser = userRepository.save(savedUser);
 
             return ResponseEntity.ok(HttpStatus.CREATED);
+
         } catch (Exception e){
             return ResponseEntity.internalServerError().body(e.getMessage());
         }

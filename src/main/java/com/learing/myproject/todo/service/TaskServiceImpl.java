@@ -17,7 +17,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-public class TaskServiceImpl implements TaskService{
+public class TaskServiceImpl implements TaskService {
 
     @Autowired
     private TaskRepository taskRepository;
@@ -33,31 +33,30 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public List<Task> findAllTasks(String username) {
-        List<Task> allTasks = new ArrayList<>();
-        List<String> allTaskIds = new ArrayList<>();
         User user = findUserByUsername(username);
+        List<String> allTaskIds = new ArrayList<>();
         List<TaskList> allTaskLists = taskListRepository.findByUserId(user.getId());
-        for(TaskList taskList : allTaskLists) {
+        for (TaskList taskList : allTaskLists) {
             allTaskIds.addAll(taskList.getTaskIds());
         }
-        allTasks = taskRepository.findAllById(allTaskIds);
-        allTasks.sort(Comparator.comparing(Task::getDueDate).reversed());
+        List<Task> allTasks = taskRepository.findAllById(allTaskIds);
+        allTasks = sortByDueDateAndCompletion(allTasks);
         return allTasks;
     }
 
-    @Override
-    public Map<String, List<String>> getTasksByLists(String username) {
-        User userEntity = findUserByUsername(username);
-        List<String> taskListIds = userEntity.getTaskListIds();
-        Map<String, List<String>> tasksByLists = new HashMap<>();
 
-        for(String ListId: taskListIds){
-            Optional <TaskList> taskListOptional = taskListRepository.findById(ListId);
-            TaskList taskList = taskListOptional.orElseThrow(()->new RuntimeException("Task List not found"));
-            List<String> taskNames = taskList.getTaskIds().stream()
-                    .map(taskId -> findById(taskId).getTitle()) // Get only the name of the task
-                    .toList();
-            tasksByLists.put(taskList.getListName(), taskNames);
+    @Override
+    public Map<String, List<Task>> getTasksByLists(String username) {
+        User user = findUserByUsername(username);
+        List<String> taskListIds = user.getTaskListIds();
+        Map<String, List<Task>> tasksByLists = new HashMap<>();
+
+        for (String ListId : taskListIds) {
+            Optional<TaskList> taskListOptional = taskListRepository.findById(ListId);
+            TaskList taskList = taskListOptional.orElseThrow(() -> new RuntimeException("Task List not found"));
+            List<Task> tasks = taskRepository.findAllById(taskList.getTaskIds());
+            tasks = sortByDueDateAndCompletion(tasks);
+            tasksByLists.put(taskList.getListName(), tasks);
         }
         return tasksByLists;
     }
@@ -67,11 +66,8 @@ public class TaskServiceImpl implements TaskService{
         User user = findUserByUsername(username);
         TaskList taskList = taskListRepository.findByUserIdAndListName(user.getId(), listName);
         List<String> taskIds = taskList.getTaskIds();
-        List<Task> tasksByListName = new ArrayList<>();
-        for(String taskId: taskIds){
-            tasksByListName.add(findById(taskId));
-        }
-        tasksByListName.sort(Comparator.comparing(Task::getDueDate).reversed());
+        List<Task> tasksByListName = taskRepository.findAllById(taskIds);
+        tasksByListName.sort(Comparator.comparing(Task::getDueDate));
         return tasksByListName;
     }
 
@@ -100,18 +96,24 @@ public class TaskServiceImpl implements TaskService{
     @Override
     public Task updateTask(String username, String id, Task task) {
         User user = findUserByUsername(username);
-        if(!userHasAccess(user, id))
+        if (!userHasAccess(user, id))
             throw new AccessDeniedException("Access Denied");
-        Task theTask = findById(id);
-        theTask.setTitle(task.getTitle());
-        theTask.setDescription(task.getDescription());
-        return taskRepository.save(task);
+        Task existingTask = findById(id);
+
+        existingTask.setTitle(task.getTitle());
+        existingTask.setDescription(task.getDescription());
+        existingTask.setDueDate(task.getDueDate());
+        existingTask.setCategory(task.getCategory());
+        existingTask.setCompleted(task.isCompleted());
+        existingTask.setPriority(task.getPriority());
+        existingTask.setCreatedOn(task.getCreatedOn());
+        return taskRepository.save(existingTask);
     }
 
     @Override
     public void deleteTask(String username, String id) {
         User user = findUserByUsername(username);
-        if(!userHasAccess(user, id))
+        if (!userHasAccess(user, id))
             throw new AccessDeniedException("Access Denied");
         Task task = findById(id);
         taskRepository.delete(task);
@@ -120,16 +122,18 @@ public class TaskServiceImpl implements TaskService{
     @Override
     public Task getTaskById(String username, String id) {
         User user = findUserByUsername(username);
-        if(!userHasAccess(user, id))
+        if (!userHasAccess(user, id))
             throw new AccessDeniedException("Access Denied");
         Task task = findById(id);
         return task;
     }
 
     @Override
-    public List<Task> sortAndFilter(String username, String sortField, String filterField) {
-       List<Task> allTasks = findAllTasks(username);
-       return groupAndSort(allTasks, sortField, filterField);
+    public List<Task> sortAndFilter(String username,  String sortBy, String filterField, String filterValue) {
+        List<Task> tasks = findAllTasks(username);
+        tasks = filterTasks(tasks, filterField, filterValue);
+        sortTasks(tasks, sortBy);
+        return tasks;
     }
 
     @Override
@@ -158,54 +162,59 @@ public class TaskServiceImpl implements TaskService{
                 .orElseThrow(() -> new RuntimeException("User not found with username " + username));
     }
 
-    public boolean userHasAccess (User user, String id){
+    public boolean userHasAccess(User user, String id) {
         HashSet<String> taskIdSet = new HashSet<>();
         List<TaskList> allTaskLists = taskListRepository.findByUserId(user.getId());
-        for(TaskList taskList : allTaskLists) {
+        for (TaskList taskList : allTaskLists) {
             taskIdSet.addAll(taskList.getTaskIds());
         }
         return taskIdSet.contains(id);
     }
 
-    public List<Task> groupAndSort(List<Task> tasks, String sortField, String filterField) {
-        Map<Object, List<Task>> groupedTasks = new HashMap<>();
-        switch (filterField) {
-            case "dueDate":
-                groupedTasks = tasks.stream().collect(Collectors.groupingBy(Task::getDueDate));
-                break;
-            case "category":
-                groupedTasks = tasks.stream().collect(Collectors.groupingBy(Task::getCategory));
-                break;
-            case "completed":
-                groupedTasks = tasks.stream().collect(Collectors.groupingBy(Task::isCompleted));
-                break;
-            case "priority":
-                groupedTasks = tasks.stream().collect(Collectors.groupingBy(Task::getPriority));
-                break;
-            default:
-                System.out.println("Invalid groupBy value. Supported values are: dueDate, category, completed, priority");
-                return tasks;
-        }
+    private List<Task> sortByDueDateAndCompletion(List<Task> allTasks) {
+        List<Task> completedTasks = new ArrayList<>();
+        List<Task> incompleteTasks = new ArrayList<>();
 
-        // Sorting logic based on the value of sortBy
-        Comparator<Task> comparator;
-        switch (sortField) {
-            case "dueDate" -> comparator = Comparator.comparing(Task::getDueDate);
-            case "priority" -> comparator = Comparator.comparing(Task::getPriority);
-            default -> {
-                System.out.println("Invalid sortBy value. Supported values are: dueDate, priority");
-                return tasks;
+        for (Task task : allTasks) {
+            if (task.isCompleted()) {
+                completedTasks.add(task);
+            } else {
+                incompleteTasks.add(task);
             }
         }
+        Collections.sort(completedTasks, Comparator.comparing(Task::getDueDate));
+        Collections.sort(incompleteTasks, Comparator.comparing(Task::getDueDate));
+        incompleteTasks.addAll(completedTasks);
+        return incompleteTasks;
+    }
 
-        // Sorting each group
-        groupedTasks.forEach((key, value) -> value.sort(comparator));
 
-        // Flattening the map to retrieve sorted tasks
-        List<Task> sortedAndGroupedTasks = groupedTasks.values().stream()
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
 
-        return sortedAndGroupedTasks;
+
+    private List<Task> filterTasks(List<Task> tasks, String filterField, String filterValue) {
+        switch (filterField) {
+            //case "dueDate":
+              //  return tasks.stream().filter(task -> Objects.equals(task.getDueDate(), filterValue)).collect(Collectors.toList());
+            case "category":
+                return tasks.stream().filter(task -> Objects.equals(task.getCategory(), filterValue)).collect(Collectors.toList());
+            case "completed":
+                return tasks.stream().filter(task -> Objects.equals(task.isCompleted(), Boolean.parseBoolean(filterValue))).collect(Collectors.toList());
+           // case "priority":
+              //  return tasks.stream().filter(task -> Objects.equals(task.getPriority(), filterValue)).collect(Collectors.toList());
+            default:
+                System.out.println("Invalid filterBy value. Supported values are: dueDate, category, completed, priority");
+                return tasks;
+        }
+    }
+
+    private void sortTasks(List<Task> tasks, String sortBy) {
+        Comparator<Task> comparator;
+        switch (sortBy) {
+            case "dueDate" -> comparator = Comparator.comparing(Task::getDueDate);
+            case "priority" -> comparator = Comparator.comparing(Task::getPriority).reversed();
+            default -> throw new IllegalArgumentException("Invalid sortBy value. Supported values are: dueDate, priority");
+        }
+        tasks.sort(comparator);
     }
 }
+

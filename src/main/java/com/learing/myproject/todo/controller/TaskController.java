@@ -2,16 +2,13 @@ package com.learing.myproject.todo.controller;
 
 import com.learing.myproject.todo.entity.Task;
 import com.learing.myproject.todo.entity.TaskList;
-import com.learing.myproject.todo.repository.TaskRepository;
 import com.learing.myproject.todo.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/tasks")
@@ -34,7 +31,7 @@ public class TaskController {
 
 
     @GetMapping("/lists")
-    public  Map<String, List<String>> getAllTasksByLists(Principal user) {
+    public  Map<String, List<Task>> getAllTasksByLists(Principal user) {
         return taskService.getTasksByLists(user.getName());
     }
 
@@ -69,13 +66,16 @@ public class TaskController {
         taskService.deleteTask(user.getName(), id);
     }
 
-    @GetMapping("?sortBy={sortField}&filterBy={filterField}")
-    public List<Task> sortAndFilter(Principal user, String sortField, String filterField) {
-        return taskService.sortAndFilter(user.getName(), sortField, filterField);
+    //@GetMapping("?sortBy={sortField}&filterBy={filterField}")
+    @GetMapping(params = {"sortBy", "filterBy", "filterValue"})
+    public List<Task> sortAndFilter(Principal user, @RequestParam("sortBy") String sortField, @RequestParam("filterBy")String filterField
+                                       ,@RequestParam("filterValue") String filterValue) {
+
+        return taskService.sortAndFilter(user.getName(), sortField, filterField, filterValue);
     }
 
-    @GetMapping("/search?query={searchText}")
-    public List<Task> searchTasks(Principal user, String searchText) {
+    @GetMapping("/search")
+    public List<Task> searchTasks(Principal user, @RequestParam ("query") String searchText) {
         return taskService.searchTasks(user.getName(), searchText);
     }
 
