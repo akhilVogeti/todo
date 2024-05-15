@@ -32,7 +32,6 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity registerUser(@RequestBody User user){
         try {
-
             if (userRepository.findByUsername(user.getUsername()).isPresent())
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already taken. Please try again");
 
@@ -40,20 +39,20 @@ public class UserController {
             user.setTaskListIds(new ArrayList<>());
             User savedUser = userRepository.save(user);
 
-
             TaskList defaultTaskList = new TaskList();
             defaultTaskList.setUserId(savedUser.getId());
             defaultTaskList.setListName("inbox");
             defaultTaskList.setTaskIds(new ArrayList<>());
             defaultTaskList = taskListRepository.save(defaultTaskList);
-
             savedUser.getTaskListIds().add(defaultTaskList.getId());
-            savedUser = userRepository.save(savedUser);
+            defaultTaskList.setUserId(savedUser.getId());
+            userRepository.save(savedUser);
+            taskListRepository.save(defaultTaskList);
 
-            return ResponseEntity.ok(HttpStatus.CREATED);
+            return ResponseEntity.status(HttpStatus.CREATED).build();
 
         } catch (Exception e){
-            return ResponseEntity.internalServerError().body(e.getMessage());
+           return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
 

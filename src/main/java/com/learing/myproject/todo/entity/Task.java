@@ -1,11 +1,13 @@
 package com.learing.myproject.todo.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Builder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
 
+@Builder
 @Document(collection = "tasks")
 public class Task {
         @Id

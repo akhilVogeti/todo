@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -67,7 +68,7 @@ public class TaskServiceImpl implements TaskService {
         TaskList taskList = taskListRepository.findByUserIdAndListName(user.getId(), listName);
         List<String> taskIds = taskList.getTaskIds();
         List<Task> tasksByListName = taskRepository.findAllById(taskIds);
-        tasksByListName.sort(Comparator.comparing(Task::getDueDate));
+        tasksByListName = sortByDueDateAndCompletion(tasksByListName);
         return tasksByListName;
     }
 
@@ -96,9 +97,10 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Task updateTask(String username, String id, Task task) {
         User user = findUserByUsername(username);
+        Task existingTask = findById(id);
         if (!userHasAccess(user, id))
             throw new AccessDeniedException("Access Denied");
-        Task existingTask = findById(id);
+
 
         existingTask.setTitle(task.getTitle());
         existingTask.setDescription(task.getDescription());
@@ -115,16 +117,15 @@ public class TaskServiceImpl implements TaskService {
         User user = findUserByUsername(username);
         if (!userHasAccess(user, id))
             throw new AccessDeniedException("Access Denied");
-        Task task = findById(id);
-        taskRepository.delete(task);
+        taskRepository.deleteById(id);
     }
 
     @Override
     public Task getTaskById(String username, String id) {
         User user = findUserByUsername(username);
+        Task task = findById(id);
         if (!userHasAccess(user, id))
             throw new AccessDeniedException("Access Denied");
-        Task task = findById(id);
         return task;
     }
 
@@ -149,20 +150,22 @@ public class TaskServiceImpl implements TaskService {
         );
         Query query = new Query(criteria);
         List<Task> tasks = mongoTemplate.find(query, Task.class);
+        if(tasks.isEmpty())
+            throw new RuntimeException("No task matches the search query");
         return tasks;
     }
 
-    public Task findById(String id) {
+    private Task findById(String id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + id));
     }
 
-    public User findUserByUsername(String username) {
+    private User findUserByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found with username " + username));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username " + username));
     }
 
-    public boolean userHasAccess(User user, String id) {
+    private boolean userHasAccess(User user, String id) {
         HashSet<String> taskIdSet = new HashSet<>();
         List<TaskList> allTaskLists = taskListRepository.findByUserId(user.getId());
         for (TaskList taskList : allTaskLists) {
@@ -193,17 +196,12 @@ public class TaskServiceImpl implements TaskService {
 
     private List<Task> filterTasks(List<Task> tasks, String filterField, String filterValue) {
         switch (filterField) {
-            //case "dueDate":
-              //  return tasks.stream().filter(task -> Objects.equals(task.getDueDate(), filterValue)).collect(Collectors.toList());
             case "category":
                 return tasks.stream().filter(task -> Objects.equals(task.getCategory(), filterValue)).collect(Collectors.toList());
             case "completed":
                 return tasks.stream().filter(task -> Objects.equals(task.isCompleted(), Boolean.parseBoolean(filterValue))).collect(Collectors.toList());
-           // case "priority":
-              //  return tasks.stream().filter(task -> Objects.equals(task.getPriority(), filterValue)).collect(Collectors.toList());
             default:
-                System.out.println("Invalid filterBy value. Supported values are: dueDate, category, completed, priority");
-                return tasks;
+                throw new IllegalArgumentException("Invalid filterBy value. Supported values are: category, completed");
         }
     }
 
@@ -216,5 +214,6 @@ public class TaskServiceImpl implements TaskService {
         }
         tasks.sort(comparator);
     }
+
 }
 

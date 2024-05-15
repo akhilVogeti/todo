@@ -51,4 +51,19 @@ public class User {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    public User() {}
+
+    public User(String username, String password, List<String> taskListIds) {
+        this.username = username;
+        this.password = password;
+        this.taskListIds = taskListIds;
+    }
+
+    public User(String id, String username, String password, List<String> taskListIds) {
+        this.id = id;
+        this.username = username;
+        this.password = password;
+        this.taskListIds = taskListIds;
+    }
 }

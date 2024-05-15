@@ -4,6 +4,7 @@ import com.learing.myproject.todo.entity.Task;
 import com.learing.myproject.todo.entity.TaskList;
 import com.learing.myproject.todo.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -25,7 +26,7 @@ public class TaskController {
 
     @PostMapping("/")
     public Task createTaskInDefaultList(Principal user, @RequestBody Task task) {
-        return taskService.createTask(user.getName(), task, "inbox");
+       return taskService.createTask(user.getName(), task, "inbox");
     }
 
 
@@ -53,12 +54,14 @@ public class TaskController {
 
     @GetMapping("/{id}")
     public Task getTaskById(Principal user, @PathVariable String id) {
-        return taskService.getTaskById(user.getName(), id);
+        Task fetchedTask = taskService.getTaskById(user.getName(), id);
+        return fetchedTask;
     }
 
     @PutMapping("/{id}")
-    public Task updateTask(Principal user, @PathVariable String id, @RequestBody Task taskDetails) {
-       return taskService.updateTask(user.getName(), id, taskDetails);
+    public Task updateTask(Principal user, @PathVariable String id, @RequestBody Task task) {
+       Task updatedTask = taskService.updateTask(user.getName(), id, task);
+       return updatedTask;
     }
 
     @DeleteMapping("/{id}")
@@ -66,7 +69,7 @@ public class TaskController {
         taskService.deleteTask(user.getName(), id);
     }
 
-    //@GetMapping("?sortBy={sortField}&filterBy={filterField}")
+
     @GetMapping(params = {"sortBy", "filterBy", "filterValue"})
     public List<Task> sortAndFilter(Principal user, @RequestParam("sortBy") String sortField, @RequestParam("filterBy")String filterField
                                        ,@RequestParam("filterValue") String filterValue) {
@@ -76,7 +79,8 @@ public class TaskController {
 
     @GetMapping("/search")
     public List<Task> searchTasks(Principal user, @RequestParam ("query") String searchText) {
-        return taskService.searchTasks(user.getName(), searchText);
+       return taskService.searchTasks(user.getName(), searchText);
+
     }
 
 }
