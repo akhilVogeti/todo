@@ -66,6 +66,8 @@ public class TaskServiceImpl implements TaskService {
     public List<Task> getTasksByListName(String username, String listName) {
         User user = findUserByUsername(username);
         TaskList taskList = taskListRepository.findByUserIdAndListName(user.getId(), listName);
+        if(taskList == null)
+            throw new RuntimeException("Task List not found");
         List<String> taskIds = taskList.getTaskIds();
         List<Task> tasksByListName = taskRepository.findAllById(taskIds);
         tasksByListName = sortByDueDateAndCompletion(tasksByListName);
@@ -76,6 +78,8 @@ public class TaskServiceImpl implements TaskService {
     public Task createTask(String username, Task task, String listName) {
         User user = findUserByUsername(username);
         TaskList taskList = taskListRepository.findByUserIdAndListName(user.getId(), listName);
+        if(taskList == null)
+            throw new RuntimeException("Task List not found");
         task.setTaskListId(taskList.getId());
         Task newTask = taskRepository.save(task);
         taskList.getTaskIds().add(newTask.getId());
@@ -83,25 +87,13 @@ public class TaskServiceImpl implements TaskService {
         return newTask;
     }
 
-    @Override
-    public TaskList createTaskList(String username, TaskList taskList) {
-        User user = findUserByUsername(username);
-        taskList.setUserId(user.getId());
-        taskList.setTaskIds(new ArrayList<>());
-        taskList = taskListRepository.save(taskList);
-        user.getTaskListIds().add(taskList.getId());
-        user = userRepository.save(user);
-        return taskList;
-    }
+
 
     @Override
     public Task updateTask(String username, String id, Task task) {
         User user = findUserByUsername(username);
         Task existingTask = findById(id);
-        if (!userHasAccess(user, id))
-            throw new AccessDeniedException("Access Denied");
-
-
+        userHasAccessOrThrow(user, id);
         existingTask.setTitle(task.getTitle());
         existingTask.setDescription(task.getDescription());
         existingTask.setDueDate(task.getDueDate());
@@ -115,8 +107,8 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteTask(String username, String id) {
         User user = findUserByUsername(username);
-        if (!userHasAccess(user, id))
-            throw new AccessDeniedException("Access Denied");
+        Task task = findById(id);
+        userHasAccessOrThrow(user, id);
         taskRepository.deleteById(id);
     }
 
@@ -124,8 +116,7 @@ public class TaskServiceImpl implements TaskService {
     public Task getTaskById(String username, String id) {
         User user = findUserByUsername(username);
         Task task = findById(id);
-        if (!userHasAccess(user, id))
-            throw new AccessDeniedException("Access Denied");
+        userHasAccessOrThrow(user, id);
         return task;
     }
 
@@ -165,13 +156,14 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username " + username));
     }
 
-    private boolean userHasAccess(User user, String id) {
+    private void userHasAccessOrThrow(User user, String id) {
         HashSet<String> taskIdSet = new HashSet<>();
         List<TaskList> allTaskLists = taskListRepository.findByUserId(user.getId());
         for (TaskList taskList : allTaskLists) {
             taskIdSet.addAll(taskList.getTaskIds());
         }
-        return taskIdSet.contains(id);
+        if(!taskIdSet.contains(id))
+            throw new AccessDeniedException("Access Denied");
     }
 
     private List<Task> sortByDueDateAndCompletion(List<Task> allTasks) {

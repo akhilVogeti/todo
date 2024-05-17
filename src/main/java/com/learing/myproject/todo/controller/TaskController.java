@@ -36,11 +36,6 @@ public class TaskController {
         return taskService.getTasksByLists(user.getName());
     }
 
-    @PostMapping("/lists")
-    public TaskList createTaskList(Principal user, @RequestBody TaskList taskList) {
-        return taskService.createTaskList (user.getName(), taskList);
-    }
-
 
     @GetMapping("/lists/{listName}")
     public List<Task> getTaskByListName(Principal user, @PathVariable String listName){

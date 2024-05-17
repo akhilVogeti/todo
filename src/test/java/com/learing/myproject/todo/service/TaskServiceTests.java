@@ -7,8 +7,10 @@ import com.learing.myproject.todo.repository.TaskListRepository;
 import com.learing.myproject.todo.repository.TaskRepository;
 import com.learing.myproject.todo.repository.UserRepository;
 import com.mongodb.DBObject;
+import net.bytebuddy.dynamic.DynamicType;
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,11 +22,15 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.CriteriaDefinition;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.*;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -142,6 +148,16 @@ public class TaskServiceTests {
     }
 
     @Test
+    void testFindAllTasks_UserNotFound() {
+        assertThrows(UsernameNotFoundException.class, () -> {
+            when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
+            taskService.findAllTasks("nonexistentuser");
+        });
+    }
+
+
+
+    @Test
     public void testGetTasksByList_ReturnTasksByLists() {
         when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
         when(taskListRepository.findById("11")).thenReturn(Optional.ofNullable(testLists.get(0)));
@@ -157,6 +173,24 @@ public class TaskServiceTests {
     }
 
     @Test
+    public void testGetTasksByLists_ReturnUserNotFound() {
+        assertThrows(UsernameNotFoundException.class, () -> {
+            when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
+            taskService.getTasksByLists("nonexistentuser");
+        });
+    }
+
+    @Test
+    public void testGetTasksByLists_ReturnListNotFound() {
+       Exception exception = assertThrows(RuntimeException.class, () -> {
+            when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+            when(taskListRepository.findById("nonexistentlist")).thenReturn(Optional.empty());
+            taskService.getTasksByLists("testUser1");
+        });
+        assertTrue(exception.getMessage().contains("Task List not found"));
+    }
+
+    @Test
     public void testGetTasksByListName_ReturnTasksByListName() {
         when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
         when(taskListRepository.findByUserIdAndListName("testUser1", "testList1"))
@@ -167,6 +201,25 @@ public class TaskServiceTests {
         Assert.assertTrue(tasks.size()==2);
         Assert.assertEquals(testTasks.get(0).getTitle(),tasks.get(0).getTitle());
         Assert.assertEquals(true, tasks.get(1).isCompleted());
+    }
+
+    @Test
+    public void testGetTasksByListName_ReturnUserNotFound() {
+        assertThrows(UsernameNotFoundException.class, () -> {
+            when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
+            taskService.getTasksByListName("nonexistentuser","testListName");
+        });
+    }
+
+    @Test
+    public void testGetTasksByListName_ReturnListNotFound() {
+        Exception exception =  assertThrows(RuntimeException.class, () -> {
+            when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+            when(taskListRepository.findByUserIdAndListName("testUser1","nonexistentlist"))
+                    .thenReturn(null);
+            taskService.getTasksByListName("testUser1","nonexistentlist");
+        });
+        assertTrue(exception.getMessage().contains("Task List not found"));
     }
 
     @Test
@@ -195,20 +248,25 @@ public class TaskServiceTests {
     }
 
     @Test
-    public void testCreateTaskList_ReturnTaskList() {
-        TaskList testTaskList3= TaskList.builder()
-                .id("13")
-                .listName("testList3")
-                .build();
+    public void testCreateTaskInList_ReturnListNotFound(){
+        Task testTask5 = Task.builder()
+                .id("5")
+                .title("testTask5")
+                .description("description for testTask5")
+                .createdOn(new Date(2000,1,1))
+                .dueDate(new Date(2000,1,11))
+                .category("testing")
+                .completed(false)
+                .priority("2").build();
 
-        when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
-        when(taskListRepository.save(testTaskList3)).thenReturn(testTaskList3);
-        when(userRepository.save(testUser1)).thenReturn(testUser1);
+        Exception exception =  assertThrows(RuntimeException.class, () -> {
+            when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+            when(taskListRepository.findByUserIdAndListName("testUser1","nonexistentlist"))
+                    .thenReturn(null);
+            taskService.createTask("testUser1",testTask5,"nonexistentlist");
+        });
+        assertTrue(exception.getMessage().contains("Task List not found"));
 
-        TaskList savedList = taskService.createTaskList("testUser1", testTaskList3);
-
-        Assert.assertEquals("testList3",savedList.getListName());
-        Assert.assertEquals("testUser1",savedList.getUserId());
     }
 
     @Test
@@ -234,6 +292,54 @@ public class TaskServiceTests {
     }
 
     @Test
+    void testUpdateTask_UserNotFound() {
+        assertThrows(UsernameNotFoundException.class, () -> {
+            when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
+            taskService.updateTask("nonexistentuser","1",any(Task.class));
+        });
+    }
+
+    @Test
+    void testUpdateTask_TaskNotFound() {
+        String taskId = "nonexistenttask";
+      Exception exception =  assertThrows(RuntimeException.class, () -> {
+            when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+            when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+            taskService.updateTask("testUser1",taskId,any(Task.class));
+        });
+
+        assertTrue(exception.getMessage().contains("Task not found with id: " + taskId));
+    }
+
+    @Test
+    void testUpdateTask_AccessDenied() {
+        User testUser2 = User.builder()
+                .id("testUser2")
+                .username("testUser2")
+                .taskListIds(new ArrayList<>(List.of("21")))
+                .build();
+
+        TaskList testTaskList4 = TaskList.builder()
+                .id("21")
+                .userId("testUser2")
+                .listName("testList2")
+                .taskIds(new ArrayList<>(Arrays.asList("99", "100")))
+                .build();
+
+
+        when(userRepository.findByUsername("testUser2")).thenReturn(Optional.ofNullable(testUser2));
+        when(taskRepository.findById("1")).thenReturn(Optional.ofNullable(testTasks.get(0)));
+        when(taskListRepository.findByUserId("testUser2")).thenReturn(List.of(testTaskList4));
+
+       assertThrows(AccessDeniedException.class, () -> {
+            taskService.updateTask("testUser2", "1", any(Task.class));
+        });
+
+    }
+
+
+
+    @Test
     public void testDeleteTask_ReturnVoid(){
         when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
         when(taskListRepository.findByUserId("testUser1")).thenReturn(testLists);
@@ -242,6 +348,53 @@ public class TaskServiceTests {
         taskService.deleteTask("testUser1", "1");
 
         verify(taskRepository).deleteById("1");
+
+    }
+
+
+    @Test
+    void testDeleteTask_UserNotFound() {
+        assertThrows(UsernameNotFoundException.class, () -> {
+            when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
+            taskService.deleteTask("nonexistentuser","1");
+        });
+    }
+
+    @Test
+    void testDeleteTask_TaskNotFound() {
+        String taskId = "nonexistenttask";
+        Exception exception =  assertThrows(RuntimeException.class, () -> {
+            when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+            when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+            taskService.deleteTask("testUser1",taskId);
+        });
+
+        assertTrue(exception.getMessage().contains("Task not found with id: " + taskId));
+    }
+
+    @Test
+    void testDeleteTask_AccessDenied() {
+        User testUser2 = User.builder()
+                .id("testUser2")
+                .username("testUser2")
+                .taskListIds(new ArrayList<>(List.of("21")))
+                .build();
+
+        TaskList testTaskList4 = TaskList.builder()
+                .id("21")
+                .userId("testUser2")
+                .listName("testList2")
+                .taskIds(new ArrayList<>(Arrays.asList("99", "100")))
+                .build();
+
+
+        when(userRepository.findByUsername("testUser2")).thenReturn(Optional.ofNullable(testUser2));
+        when(taskRepository.findById("1")).thenReturn(Optional.ofNullable(testTasks.get(0)));
+        when(taskListRepository.findByUserId("testUser2")).thenReturn(List.of(testTaskList4));
+
+        assertThrows(AccessDeniedException.class, () -> {
+            taskService.deleteTask("testUser2", "1");
+        });
 
     }
 
@@ -255,6 +408,52 @@ public class TaskServiceTests {
 
         Assert.assertEquals("testTask1", fetchedTask.getTitle());
         Assert.assertEquals("11", fetchedTask.getTaskListId());
+    }
+
+    @Test
+    void testGetTaskById_UserNotFound() {
+        assertThrows(UsernameNotFoundException.class, () -> {
+            when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
+            taskService.getTaskById("nonexistentuser","1");
+        });
+    }
+
+    @Test
+    void testGetTaskById_TaskNotFound() {
+        String taskId = "nonexistenttask";
+        Exception exception =  assertThrows(RuntimeException.class, () -> {
+            when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+            when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+            taskService.getTaskById("testUser1",taskId);
+        });
+
+        assertTrue(exception.getMessage().contains("Task not found with id: " + taskId));
+    }
+
+    @Test
+    void testGetTaskById_AccessDenied() {
+        User testUser2 = User.builder()
+                .id("testUser2")
+                .username("testUser2")
+                .taskListIds(new ArrayList<>(List.of("21")))
+                .build();
+
+        TaskList testTaskList4 = TaskList.builder()
+                .id("21")
+                .userId("testUser2")
+                .listName("testList2")
+                .taskIds(new ArrayList<>(Arrays.asList("99", "100")))
+                .build();
+
+
+        when(userRepository.findByUsername("testUser2")).thenReturn(Optional.ofNullable(testUser2));
+        when(taskRepository.findById("1")).thenReturn(Optional.ofNullable(testTasks.get(0)));
+        when(taskListRepository.findByUserId("testUser2")).thenReturn(List.of(testTaskList4));
+
+        assertThrows(AccessDeniedException.class, () -> {
+            taskService.getTaskById("testUser2", "1");
+        });
+
     }
 
     @Test
@@ -276,6 +475,27 @@ public class TaskServiceTests {
     }
 
     @Test
+    public void testSortAndFilter_InvalidValue() {
+        when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+        when(taskService.findAllTasks("testUser1")).thenReturn(testTasks);
+
+        Exception exception1 = assertThrows(RuntimeException.class, () -> {
+            taskService.sortAndFilter("testUser1", "dueDate", "nonexistent", "nonexistent");
+        });
+
+        Exception exception2 = assertThrows(RuntimeException.class, () -> {
+            taskService.sortAndFilter("testUser1", "nonexistent", "category", "testing");
+        });
+
+        assertTrue(exception1.getMessage().
+                contains("Invalid filterBy value. Supported values are: category, completed"));
+
+        assertTrue(exception2.getMessage().
+                contains("Invalid sortBy value. Supported values are: dueDate, priority"));
+
+    }
+
+        @Test
     public void testSearch_ReturnTasksList() {
         when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
         Criteria expectedCriteria = new Criteria().andOperator(
@@ -289,11 +509,10 @@ public class TaskServiceTests {
 
         ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
 
-
         when(mongoTemplate.find(queryCaptor.capture(), eq(Task.class))).thenReturn(Arrays.asList(testTasks.get(1)));
 
-
         List<Task> fetchedTasks = taskService.searchTasks("testUser1", "ice");
+
         Query capturedQuery = queryCaptor.getValue();
 
         Assert.assertEquals(expectedQuery,capturedQuery);
@@ -304,5 +523,32 @@ public class TaskServiceTests {
         Assert.assertEquals("testTask2", fetchedTasks.get(0).getTitle());
 
     }
+
+    @Test
+    public void testSearch_UserNotFound() {
+        assertThrows(UsernameNotFoundException.class, () -> {
+            when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
+            taskService.searchTasks("nonexistentuser", anyString());
+        });
+    }
+
+    @Test
+    public void testSearch_NoTaskMatches() {
+        String searchText = "nonexistent";
+        when(userRepository.findByUsername("testUser1")).thenReturn(Optional.ofNullable(testUser1));
+        when(mongoTemplate.find(any(Query.class), eq(Task.class))).thenReturn(Collections.emptyList());
+
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            taskService.searchTasks("testUser1", searchText);
+        });
+
+        assertTrue(exception.getMessage().contains("No task matches the search query"));
+
+    }
+
+
+
+
+
 
 }

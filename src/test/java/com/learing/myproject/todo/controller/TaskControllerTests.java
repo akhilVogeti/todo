@@ -193,31 +193,6 @@ public class TaskControllerTests {
 
     }
 
-    @Test
-    public void testCreateTaskList_ReturnTaskList() throws Exception {
-        Principal testPrincipal = new UsernamePasswordAuthenticationToken("testuser1", "password");
-
-        TaskList testTaskList4= TaskList.builder()
-                .id("14")
-                .userId("testuser1")
-                .listName("testList4")
-                .build();
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        String taskListJson = objectMapper.writeValueAsString(testTaskList4);
-
-        when(taskService.createTaskList(refEq("testuser1"), refEq(testTaskList4))).thenReturn(testTaskList4);
-
-        MvcResult result = mockMvc.perform(
-                        post("/tasks/lists")
-                                .principal(testPrincipal)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(taskListJson))
-                .andExpect(jsonPath("$.listName").value("testList4"))
-                .andReturn();
-        System.out.println(result.getResponse().getContentAsString());
-
-    }
 
     @Test
     public void testCreateTaskInList_ReturnTask() throws Exception {
@@ -288,12 +263,13 @@ public class TaskControllerTests {
     }
 
     @Test
-    public void testDeleteTask_VerifyParameters () throws Exception {
+    public void testDeleteTask_VerifyArguments () throws Exception {
 
         Principal testPrincipal = new UsernamePasswordAuthenticationToken("testuser1", "password");
 
+        String taskId = "1";
 
-        mockMvc.perform(delete("/tasks/" + "1")
+        mockMvc.perform(delete("/tasks/" + taskId)
                         .contentType(MediaType.APPLICATION_JSON)
                 .principal(testPrincipal));
 

@@ -17,7 +17,7 @@ public interface TaskService {
     Task getTaskById(String username, String id);
     Task createTask(String username, Task task, String listName);
 
-    TaskList createTaskList(String username, TaskList taskList);
+
 
     Task updateTask (String username,String id, Task task);
 
