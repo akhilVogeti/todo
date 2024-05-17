@@ -155,7 +155,7 @@ curl -u "user1:password1" -X GET http://localhost:8080/tasks/lists/Personal
 ```
 ```bash
 curl -u "user1:password1" -X GET http://localhost:8080/tasks/lists/Personal
-```bash
+```
 7. Get lists and tasks. ({listName:Tasks})
 ```bash
 curl -u "user1:password1" -X GET http://localhost:8080/tasks/lists
